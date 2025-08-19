@@ -29,8 +29,9 @@ while True:
         if (left[0].y - left[1].y) < 0.004:
             pyautogui.click()
             pyautogui.sleep(1)
-    cv2.imshow('Eye Controlled Mouse', RGB)
-    cv2.waitKey(1)
+    cv2.imshow('Eye Controlled Mouse', frame)
+    if cv2.waitKey(10) & 0xFF == ord('q'):
+        break
   
-  cap.release()
-  cv2.destroyAllWindows()
+cap.release()
+cv2.destroyAllWindows()

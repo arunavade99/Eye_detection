@@ -11,7 +11,7 @@ def draw_virtual_bounding_box(frame):
     box_x2 = box_x1 + box_w
     box_y2 = box_y1 + box_h
     cv2.rectangle(frame, (box_x1, box_y1), (box_x2, box_y2), (255, 0, 0), 2)
-    return frame
+    return frame, (box_x1, box_y1, box_x2, box_y2)
 
 cap = cv2.VideoCapture(0)
 face_mesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True)
@@ -21,28 +21,40 @@ while True:
     ret, frame = cap.read()
     frame = cv2.flip(frame, 1)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    frame = draw_virtual_bounding_box(frame)
+    frame, (box_x1, box_y1, box_x2, box_y2) = draw_virtual_bounding_box(frame)
     output = face_mesh.process(rgb_frame)
     landmark_points = output.multi_face_landmarks #landmarks of face
     frame_h, frame_w, ret = frame.shape
     if landmark_points:
-        landmarks = landmark_points[0].landmark
-        # Left eye full landmarks
-        left_eye_indices = [33, 7, 163, 144, 145, 153, 154, 155, 133, 246, 161, 160, 159, 158, 157, 173]
-        left_eye = [landmarks[i] for i in left_eye_indices]
-        for landmark in left_eye:
-            x = int(landmark.x * frame_w)
-            y = int(landmark.y * frame_h)
-            cv2.circle(frame, (x, y), 3, (0, 255, 255))
+        # Draw a simple bounding box over the detected face
+        face_landmarks = landmark_points[0]
+        xs = [lm.x for lm in face_landmarks.landmark]
+        ys = [lm.y for lm in face_landmarks.landmark]
+        min_x = int(min(xs) * frame_w)
+        max_x = int(max(xs) * frame_w)
+        min_y = int(min(ys) * frame_h)
+        max_y = int(max(ys) * frame_h)
+        cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (0, 255, 0), 2)
 
-        # Right eye full landmarks
-        right_eye_indices = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398]
-        right_eye = [landmarks[i] for i in right_eye_indices]
-        for landmark in right_eye:
-            x = int(landmark.x * frame_w)
-            y = int(landmark.y * frame_h)
-            cv2.circle(frame, (x, y), 3, (0, 0, 255))
-    
+        landmarks = landmark_points[0].landmark
+        # Left eyeball (pupil)
+        left_pupil = landmarks[468]
+        x = int(left_pupil.x * frame_w)
+        y = int(left_pupil.y * frame_h)
+        cv2.circle(frame, (x, y), 6, (0, 255, 255), -1)
+        # Alert if left pupil is outside bounding box
+        if x < box_x1 or x > box_x2 or y < box_y1 or y > box_y2:
+            cv2.putText(frame, 'ALERT: Eye Out of Box!', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+        # Right eyeball (pupil)
+        right_pupil = landmarks[473]
+        x = int(right_pupil.x * frame_w)
+        y = int(right_pupil.y * frame_h)
+        cv2.circle(frame, (x, y), 6, (0, 0, 255), -1)
+        # Alert if right pupil is outside bounding box
+        if x < box_x1 or x > box_x2 or y < box_y1 or y > box_y2:
+            cv2.putText(frame, 'ALERT: Eye Out of Box!', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+        
     cv2.imshow('Eye Movenment Controller', frame)
     if cv2.waitKey(10) & 0xFF == ord('q'):
         break
